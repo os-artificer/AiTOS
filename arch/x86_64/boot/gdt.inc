@@ -1,0 +1,28 @@
+; Copyright 2026 AiTOS authors.
+; SPDX-License-Identifier: Apache-2.0
+
+DESC_G_4K		equ	1 << 23
+DESC_D_32		equ	1 << 22
+DESC_L_64		equ	1 << 21
+DESC_AVL		equ	0
+DESC_LIMIT_HI		equ	0x000F0000
+DESC_P			equ	1 << 15
+DESC_DPL_0		equ	0 << 13
+DESC_S_CODE		equ	1 << 12
+DESC_S_DATA		equ	1 << 12
+DESC_TYPE_CODE		equ	0x8 << 8
+DESC_TYPE_DATA		equ	0x2 << 8
+
+DESC_CODE32_HIGH	equ	(0x00 << 24) | DESC_G_4K | DESC_D_32 | DESC_AVL | \
+				DESC_LIMIT_HI | DESC_P | DESC_DPL_0 | DESC_S_CODE | DESC_TYPE_CODE
+DESC_DATA_HIGH		equ	(0x00 << 24) | DESC_G_4K | DESC_D_32 | DESC_AVL | \
+				DESC_LIMIT_HI | DESC_P | DESC_DPL_0 | DESC_S_DATA | DESC_TYPE_DATA
+DESC_CODE64_HIGH	equ	(0x00 << 24) | DESC_G_4K | DESC_L_64 | DESC_AVL | \
+				DESC_LIMIT_HI | DESC_P | DESC_DPL_0 | DESC_S_CODE | DESC_TYPE_CODE
+
+RPL0			equ	0
+TI_GDT			equ	0
+
+SELECTOR_CODE32		equ	(1 << 3) + TI_GDT + RPL0
+SELECTOR_DATA		equ	(2 << 3) + TI_GDT + RPL0
+SELECTOR_CODE64		equ	(3 << 3) + TI_GDT + RPL0

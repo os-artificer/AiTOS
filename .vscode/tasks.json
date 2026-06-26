@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "make DEBUG=1 image gdbscripts",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "make clean",
+            "problemMatcher": []
+        },
+        {
+            "label": "qemu-debug",
+            "type": "shell",
+            "command": "make DEBUG=1 image gdbscripts && bash scripts/debug-qemu.sh start",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "aitos",
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "QEMU is waiting for GDB"
+                }
+            }
+        }
+    ]
+}

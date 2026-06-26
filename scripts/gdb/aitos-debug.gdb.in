@@ -1,0 +1,10 @@
+# DEBUG=1 only — generated into build/gdb/aitos-debug.gdb
+# Stop before loader debug spin (@LOADER_DEBUG_GATE@); break at spin jmp is unreliable.
+break *@LOADER_DEBUG_GATE@
+commands
+  silent
+  printf "\n[AiTOS] Loader ready — entering kmain...\n\n"
+  disable 1
+  break kmain
+  jump *@KERNEL_ENTRY@
+end

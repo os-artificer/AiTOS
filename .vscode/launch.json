@@ -1,0 +1,54 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug AiTOS (QEMU + GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.bin",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "preLaunchTask": "qemu-debug",
+            "setupCommands": [
+                {
+                    "text": "set architecture i386",
+                    "description": "32-bit x86 kernel"
+                },
+                {
+                    "text": "set disassembly-flavor intel",
+                    "description": "Intel syntax"
+                },
+                {
+                    "text": "set breakpoint pending on",
+                    "description": "Allow breakpoints before kernel load"
+                },
+                {
+                    "text": "target remote :1234",
+                    "description": "Connect to QEMU GDB stub"
+                },
+                {
+                    "text": "source ${workspaceFolder}/build/gdb/aitos-debug.gdb",
+                    "description": "Auto-stop at kmain (run make gdbscripts first)"
+                }
+            ]
+        },
+        {
+            "name": "Attach GDB (QEMU already running)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.bin",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "setupCommands": [
+                {
+                    "text": "set architecture i386"
+                },
+                {
+                    "text": "target remote :1234"
+                }
+            ]
+        }
+    ]
+}

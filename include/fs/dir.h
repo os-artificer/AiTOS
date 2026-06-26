@@ -1,0 +1,54 @@
+/**
+ * Copyright 2026 AiTOS authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+**/
+
+#ifndef __FS_DIR_H
+#define __FS_DIR_H
+#include <fs/fs.h>
+#include <kernel/global.h>
+#include <drivers/ide.h>
+#include <fs/inode.h>
+#include <lib/stdint.h>
+
+#define MAX_FILE_NAME_LEN 16 // max length of file
+
+// directory struct (unused in hard disk , just use in memory)
+struct dir
+{
+    struct inode* inode;
+    uint32_t      dir_pos;      // the offset of pos (the offset of dir_entry index)
+    uint32_t      dir_buf[512]; // data cathe in diretory
+};
+
+// directory entry struct
+struct dir_entry
+{
+    char            filename[MAX_FILE_NAME_LEN]; // file or directory name
+    uint32_t        i_no;                        // inode number
+    enum file_types f_type;                      // file type
+};
+
+void              open_root_dir(struct partition* part);
+struct dir*       dir_open(struct partition* part, uint32_t ionde_no);
+bool              search_dir_entry(struct partition* part, struct dir* pdir, const char* name, struct dir_entry* dir_e);
+void              dir_close(struct dir* dir);
+void              create_dir_entry(char* filename, uint32_t inode_no, uint8_t file_type, struct dir_entry* p_de);
+bool              sync_dir_entry(struct dir* parent_dir, struct dir_entry* p_de, void* io_buf);
+bool              delete_dir_entry(struct partition* part, struct dir* pdir, uint32_t inode_no, void* io_buf);
+struct dir_entry* dir_read(struct dir* dir);
+bool              dir_is_empty(struct dir* dir);
+int32_t           dir_remove(struct dir* parent_dir, struct dir* child_dir);
+
+#endif
