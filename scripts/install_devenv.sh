@@ -250,4 +250,7 @@ else
 	log "Skipping build verification (--no-verify)"
 fi
 
+log "Installing git hooks"
+bash "$ROOT/scripts/install_git_hooks.sh"
+
 print_notes

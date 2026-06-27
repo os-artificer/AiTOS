@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Strip Cursor agent co-author trailers from commit messages.
+# Installed by scripts/install_git_hooks.sh into .git/hooks/prepare-commit-msg
+
+set -euo pipefail
+
+msg_file="${1:?}"
+
+if [[ ! -f "$msg_file" ]]; then
+	exit 0
+fi
+
+case "$(uname -s)" in
+	Darwin)
+		sed -i '' \
+			-e '/^Co-authored-by: Cursor <cursoragent@cursor\.com>$/d' \
+			-e '/^Made with \[Cursor\](https:\/\/cursor\.com)$/d' \
+			"$msg_file"
+		;;
+	*)
+		sed -i \
+			-e '/^Co-authored-by: Cursor <cursoragent@cursor\.com>$/d' \
+			-e '/^Made with \[Cursor\](https:\/\/cursor\.com)$/d' \
+			"$msg_file"
+		;;
+esac
