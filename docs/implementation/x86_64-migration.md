@@ -85,7 +85,7 @@ make run-qemu # qemu-system-x86_64, -debugcon stdio
 
 | 项 | 值 |
 |----|-----|
-| 编译 | `gcc -m64 -mcmodel=kernel -mno-red-zone` |
+| 编译 | `gcc -m64 -mcmodel=medium -mno-red-zone`（GCC >= 13） |
 | 链接 | `ld -m elf_x86_64 -T arch/x86_64/linker.ld` |
 | QEMU | `qemu-system-x86_64 -cpu qemu64` |
 | 磁盘 | `hd60M.img`：MBR + loader@扇区2 + kernel.bin@扇区6 |

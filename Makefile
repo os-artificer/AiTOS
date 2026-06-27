@@ -64,7 +64,7 @@ export QEMU GDB GDB_PORT QEMU_GUI
 QEMU_DRIVE	= -drive file=$(HD60_IMG),format=raw,if=ide,index=0,media=disk \
 		  -drive file=$(HD80_IMG),format=raw,if=ide,index=1,media=disk
 
-.PHONY: all build image clean clean-all \
+.PHONY: all build image clean clean-all gcc-version-check \
 	run-qemu run-qemu-gui boot-trace \
 	debug debug-gui debug-tmux debug-tmux-gui \
 	debug-qemu debug-qemu-gui gdb stop gdbscripts
@@ -74,7 +74,25 @@ default: all
 all: image
 	@echo "build success: $(HD60_IMG)"
 
-build: $(BOOT_BIN) $(LOADER_BIN) $(KERNEL_ELF)
+gcc-version-check:
+	@ver=$$($(CC) -dumpversion 2>/dev/null) || ver=; \
+	major=$${ver%%.*}; \
+	if [ -z "$$ver" ]; then \
+	  echo "error: $(CC) not found or not executable"; \
+	  echo "hint: run ./scripts/install_devenv.sh or configure env.rc"; \
+	  exit 1; \
+	fi; \
+	if [ "$$major" -lt 13 ] 2>/dev/null; then \
+	  echo "error: AiTOS requires GCC >= 13 (found $$ver via $(CC))"; \
+	  exit 1; \
+	fi; \
+	if [ "$$(uname -s)" = Darwin ] && ! $(CC) -dumpmachine 2>/dev/null | grep -q elf; then \
+	  echo "error: macOS needs x86_64-elf-gcc cross toolchain (found $(CC))"; \
+	  echo "hint: run ./scripts/install_devenv.sh to generate env.rc"; \
+	  exit 1; \
+	fi
+
+build: gcc-version-check $(BOOT_BIN) $(LOADER_BIN) $(KERNEL_ELF)
 
 image: build $(HD60_IMG) $(HD80_IMG) $(KERNEL_BIN)
 

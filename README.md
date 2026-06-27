@@ -50,6 +50,7 @@ cp env.rc.example env.rc
 | 工具                     | 用途                                           |
 | ---------------------- | -------------------------------------------- |
 | `nasm`                 | 汇编引导程序                                       |
+| **GCC >= 13**          | 编译内核 C 代码（`make` 构建前会检查版本）                    |
 | `gcc`, `ld`, `objcopy` | 编译与链接内核（Linux 使用系统原生工具链）                     |
 | `x86_64-elf-gcc` 等     | **仅 macOS 需要**：Apple Clang 无法生成裸机 ELF，需交叉工具链 |
 | `qemu-system-x86_64`   | 运行与 GDB 远程调试                                 |
@@ -64,11 +65,14 @@ cp env.rc.example env.rc
 brew install x86_64-elf-gcc x86_64-elf-binutils nasm qemu gdb tmux
 ```
 
-**Debian/Ubuntu**：
+**Debian/Ubuntu**（Ubuntu 22.04 / Debian 12 若系统 `gcc` 低于 13，运行 `./scripts/install_devenv.sh` 会自动尝试安装 `gcc-13`）：
 
 ```bash
 sudo apt install build-essential nasm gcc gdb qemu-system-x86 tmux
+# 或一键：./scripts/install_devenv.sh
 ```
+
+Fedora、Arch、Ubuntu 24+ 等发行版通常自带 GCC 13+，直接使用系统 `gcc` 即可。
 
 其他 Linux 发行版（Fedora `dnf`、Arch `pacman`、Alpine `apk` 等）由 `install_devenv.sh` 自动识别并安装对应包。
 
@@ -84,7 +88,13 @@ LD := x86_64-elf-ld
 OBJCOPY := x86_64-elf-objcopy
 ```
 
-**Linux** 通常无需覆盖工具链，使用 Makefile 默认的 `gcc` / `ld` 即可。
+**Linux** 由 `install_devenv.sh` 自动选择 `gcc` 或 `gcc-13`（需 GCC >= 13）：
+
+```makefile
+CC := gcc        # 或 gcc-13（Ubuntu 22.04 / Debian 12）
+LD := ld
+OBJCOPY := objcopy
+```
 
 
 | 变量                      | 默认值                          | 说明                                                |

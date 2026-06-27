@@ -6,6 +6,7 @@
 ; Maintains a software cursor and syncs the VGA hardware cursor via CRTC.
 
 [bits 64]				; long-mode routines called from C
+default rel				; RIP-relative addressing for .data symbols
 
 VGA_MEM     equ 0xb8000			; linear address of color text frame buffer
 DEBUGCON    equ 0xe9			; QEMU/Bochs debug console I/O port

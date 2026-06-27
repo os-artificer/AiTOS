@@ -14,9 +14,6 @@ struct boot_info {
 	u64	reserved;
 };
 
-static inline struct boot_info *boot_info_ptr(void)
-{
-	return (struct boot_info *)(unsigned long)AITOS_BOOT_INFO_PHYS;
-}
+void boot_info_load(struct boot_info *dst);
 
 #endif /* _AITOS_BOOT_INFO_H */
