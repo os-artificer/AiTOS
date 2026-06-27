@@ -21,8 +21,6 @@
 /.cursor/
 
 # Debug and crash dumps
-core
-core.*
 vgcore.*
 .gdb_history
 *.log
