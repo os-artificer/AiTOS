@@ -40,10 +40,10 @@
     test al, 0x80			; BSY bit set?
     jnz .wait_bsy			; wait until drive ready
 
-; --- Load kernel.bin to physical 0x70000 (DS:BX = 0x7000:0) ---
+; --- Load kernel.bin to staging 0x70000 (DS:BX = 0x7000:0); loader relocates to 0x100000 ---
     push ds				; save MBR data segment
-    mov ax, KERNEL_BIN_BASE_ADDR >> 4	; paragraph base for 0x70000
-    mov ds, ax				; DS = 0x7000 -> linear 0x70000
+    mov ax, KERNEL_STAGING_ADDR >> 4	; paragraph base for staging buffer
+    mov ds, ax				; DS -> linear KERNEL_STAGING_ADDR
     xor bx, bx				; offset 0 within segment
     mov eax, KERNEL_START_SECTOR	; LBA 6: first kernel sector
     mov cx, KERNEL_SECTOR_COUNT		; number of 512-byte sectors

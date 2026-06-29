@@ -10,7 +10,8 @@ load_env_rc
 GDB_PORT="${GDB_PORT:-1234}"
 GDB="${GDB:-gdb}"
 QEMU_GUI="${QEMU_GUI:-0}"
-GDB_SESSION="${ROOT}/.cursor/gdb-session-af2b5b.gdb"
+GRUB_BOOT="${GRUB_BOOT:-iso}"
+GDB_SESSION="${ROOT}/.cursor/gdb-session-grub.gdb"
 PTY_FILE="bin/qemu-serial.pty"
 
 # shellcheck source=scripts/qemu-ui.sh
@@ -26,23 +27,23 @@ ensure_tty() {
 ensure_tty
 
 cleanup() {
-	bash scripts/debug-qemu.sh stop
+	bash scripts/debug-qemu-grub.sh stop
 }
 trap cleanup EXIT INT TERM
 
-bash scripts/debug-qemu.sh start
+bash scripts/debug-qemu-grub.sh start
 
 cat >"$GDB_SESSION" <<EOF
 target remote 127.0.0.1:${GDB_PORT}
 EOF
 
-cat <<'MSG'
+cat <<MSG
 
-GDB connected at CPU reset.
-  Type:  c          (continue — stops at kmain after boot)
+GDB connected at CPU reset (GRUB path: ${GRUB_BOOT}).
+  Type:  c          (continue — stops at kmain after GRUB boot)
 
 退出调试: 在 GDB 输入 quit
-         或另开终端执行 make stop（会停止 QEMU 与 GDB）
+         或另开终端执行 make stop
 
 MSG
 

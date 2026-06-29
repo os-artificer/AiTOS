@@ -11,4 +11,10 @@ define enter-kernel
   jump *@KERNEL_ENTRY@
 end
 
+break kmain
+commands
+  silent
+  printf "\n[AiTOS] kmain\n\n"
+end
+
 # target remote is injected by the caller.

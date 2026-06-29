@@ -13,6 +13,7 @@ struct console_ops {
 
 void register_console(const struct console_ops *ops);
 void console_write_char(char c);
+void console_puts(const char *s);
 void console_clear(void);
 
 int __init console_init(void);

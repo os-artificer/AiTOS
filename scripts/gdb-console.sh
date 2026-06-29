@@ -21,7 +21,6 @@ trap cleanup EXIT INT TERM
 
 cat >"$GDB_SESSION" <<EOF
 target remote 127.0.0.1:${GDB_PORT}
-source build/gdb/aitos-debug.gdb
 EOF
 
 if [ -e /dev/tty ]; then

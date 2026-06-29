@@ -10,7 +10,7 @@
 
 | 维度 | 本次要做到 | 本次不做（留扩展点） |
 |------|-----------|---------------------|
-| 引导 | MBR → loader → Long Mode → `kmain` 完整流程 | UEFI、GRUB、SMP |
+| 引导 | MBR → loader → Long Mode → `kmain`；**GRUB/Multiboot2** 见 [grub-boot.md](grub-boot.md) | UEFI、SMP |
 | 内核 | 64 位高半区、中断框架、键盘输入、控制台输出 | 完整四级页表动态管理、用户态进程 |
 | Shell | 启动后停留在 `[aitos@localhost]$`，5 个内置命令可用 | `ls/cd/mkdir` 等依赖完整 FS 的命令 |
 | 扩展性 | mm/sched/syscall/fs 均有 **ops 接口 + 桩实现** | fork/exec、ELF 用户程序、IDE 实装 |

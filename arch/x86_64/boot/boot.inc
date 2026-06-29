@@ -22,7 +22,9 @@ LOADER_START_SECTOR	equ	0x2			; LBA of first loader sector (after MBR)
 ; --- Kernel image placement ---
 KERNEL_START_SECTOR	equ	0x6			; LBA where kernel.bin begins on the disk
 KERNEL_SECTOR_COUNT	equ	40			; sectors read by MBR PIO (20 KiB)
-KERNEL_BIN_BASE_ADDR	equ	0x70000			; physical address where kernel.bin is loaded
+KERNEL_STAGING_ADDR	equ	0x70000			; MBR real-mode load buffer (below 1 MiB)
+KERNEL_BIN_BASE_ADDR	equ	0x100000		; kernel link / run address (GRUB + loader)
+KERNEL_COPY_BYTES	equ	KERNEL_SECTOR_COUNT * 512	; bytes copied staging -> link addr
 KERNEL_VMA_BASE_LO	equ	0x80000000		; low 32 bits of kernel link address
 KERNEL_VMA		equ	0xffffffff80000000	; canonical high-half kernel virtual base
 

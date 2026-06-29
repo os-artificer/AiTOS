@@ -9,7 +9,11 @@
 
 extern irq_dispatch	; C handler: void irq_dispatch(unsigned vector)
 
-EARLY_STACK_TOP equ 0x1ff000	; physical stack used before kernel sets final RSP
+%define BOOT_SOURCE_LEGACY	0
+%define BOOT_SOURCE_MULTIBOOT2	1
+%define MULTIBOOT2_BOOTLOADER_MAGIC 0x36d76289
+%define KERNEL_BIN_BASE_ADDR        0x100000
+%define EARLY_STACK_TOP             0x7fe000
 
 ; --- Save all general-purpose registers on the interrupt stack ---
 ; Pushes in reverse order so POP_REGS restores correctly. Saves full GPR set
@@ -78,24 +82,74 @@ intr%1_entry:
     iretq			; return to interrupted context
 %endmacro
 
+section .data
+global boot_code_selector
+boot_code_selector:
+    dw 0				; filled from CS at entry (GRUB=0x10, legacy=0x18)
+
+section .data
+align 8
+global boot_handoff_source
+global boot_handoff_mbi_phys
+boot_handoff_source:
+    dq 0
+boot_handoff_mbi_phys:
+    dq 0
+align 16
+global boot_stack_top
+boot_stack:
+    times 16384 db 0
+boot_stack_top:
+
 section .head.text	; early kernel text linked at high-half entry
 global _start
 extern kmain		; kernel C entry after boot
+extern boot_early_init	; populate boot_info from legacy or Multiboot2 handoff
 extern __bss_start	; start of uninitialized data (linker symbol)
 extern __bss_end	; end of BSS (exclusive)
 
-; --- Kernel entry from loader: zero BSS, call kmain, halt if it returns ---
+; --- Kernel entry: set stack, save handoff, zero BSS, boot_early_init, kmain ---
 _start:
     cli				; interrupts off until IDT is installed in C
-    mov rsp, EARLY_STACK_TOP	; bootstrap stack (physical, pre-mm)
-    and rsp, ~0xf		; 16-byte align RSP for C calls
+    mov r13, rbx		; GRUB → EBX = MBI phys (save before any RBX clobber)
+    cmp eax, MULTIBOOT2_BOOTLOADER_MAGIC
+    je .mb2_handoff
+    cmp eax, MULTIBOOT2_BOOTLOADER_MAGIC - 1
+    je .mb2_handoff
+    cmp eax, KERNEL_BIN_BASE_ADDR
+    je .legacy_handoff
+    jmp .legacy_handoff
+.legacy_handoff:
+    mov r12, BOOT_SOURCE_LEGACY
+    jmp .check_mbi
+.mb2_handoff:
+    mov r12, BOOT_SOURCE_MULTIBOOT2
+.check_mbi:
+    test r13, r13
+    jz .save_handoff
+    cmp r13d, 0x10000
+    jb .save_handoff
+    cmp r13d, 0x08000000
+    ja .save_handoff
+    mov r12, BOOT_SOURCE_MULTIBOOT2
+.save_handoff:
+    mov ax, cs
+    mov word [boot_code_selector], ax
+    mov qword [boot_handoff_source], r12
+    mov qword [boot_handoff_mbi_phys], r13
+.bss_clear:
     mov rdi, __bss_start	; RDI = destination for BSS zero
     mov rcx, __bss_end		; RCX = end address
     sub rcx, rdi		; RCX = byte count to clear
     xor eax, eax		; fill value 0
     cld				; rep stosb increments RDI
     rep stosb			; zero entire BSS range
-    call kmain			; enter kernel initialization (never returns normally)
+    mov rsp, boot_stack_top
+    and rsp, ~0xf		; 16-byte align RSP for C calls
+    mov rdi, r12
+    mov rsi, r13
+    call boot_early_init
+    call kmain
 .start_hang:
     hlt				; halt CPU if kmain returns
     jmp .start_hang		; loop forever on resume from halt

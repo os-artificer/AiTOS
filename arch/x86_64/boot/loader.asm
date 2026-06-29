@@ -145,6 +145,13 @@ pm_start:
     xor eax, eax						; zero value
     rep stosd							; clear kernel PD
 
+; --- Relocate kernel.bin from MBR staging to link address (32-bit, paging off) ---
+    mov esi, KERNEL_STAGING_ADDR
+    mov edi, KERNEL_BIN_BASE_ADDR
+    mov ecx, KERNEL_COPY_BYTES / 4
+    cld
+    rep movsd
+
 ; --- Link 4-level hierarchy: identity 2 MiB at physical 0 ---
 ; PML4[0] -> PDPT@+0x1000 -> PD@+0x2000 -> 2 MiB page at phys 0
     mov eax, PAGE_TABLE_BASE + 0x1000				; physical address of PDPT

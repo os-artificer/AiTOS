@@ -8,18 +8,73 @@
 [bits 64]				; long-mode routines called from C
 default rel				; RIP-relative addressing for .data symbols
 
+extern console_vga_enabled		; set after vga_init_text_mode (legacy only)
+extern boot_handoff_source		; 1 = Multiboot2 / GRUB headless path
+
+BOOT_SOURCE_MULTIBOOT2 equ 1
 VGA_MEM     equ 0xb8000			; linear address of color text frame buffer
 DEBUGCON    equ 0xe9			; QEMU/Bochs debug console I/O port
 COM1_DATA   equ 0x3f8			; UART 8250 transmit holding register
 VGA_WIDTH   equ 80			; characters per text row
 VGA_HEIGHT  equ 25			; text rows on screen
 
-section .data
-cursor_pos  dq 0			; software cursor as cell index (0 .. WIDTH*HEIGHT-1)
+section .bss
+cursor_pos  resq 1			; software cursor (BSS — must not overlap boot_stack_top)
 
 section .text
 global arch_console_putchar		; void arch_console_putchar(char c)
 global arch_console_reset_cursor	; void arch_console_reset_cursor(void)
+global debugcon_puts			; void debugcon_puts(const char *s)
+extern console_puts_legacy		; void console_puts_legacy(const char *s)
+
+; void console_puts(const char *s)
+global console_puts
+console_puts:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    mov rbx, rdi
+    cmp qword [rel boot_handoff_source], BOOT_SOURCE_MULTIBOOT2
+    je .debugcon
+    mov ax, cs
+    cmp ax, 0x10
+    je .debugcon
+    cmp ax, 0x8
+    je .debugcon
+    jmp .legacy
+.debugcon:
+    mov rdi, rbx
+    call debugcon_puts
+    jmp .done
+.legacy:
+    mov rdi, rbx
+    call console_puts_legacy
+.done:
+    pop rbx
+    pop rbp
+    ret
+
+; void debugcon_puts(const char *s) — debugcon only (GRUB headless path)
+debugcon_puts:
+    push rbx
+    test rdi, rdi
+    jz .done
+    mov rbx, rdi
+.loop:
+    mov al, [rbx]
+    test al, al
+    jz .done
+    out 0xe9, al
+    cmp al, 0xa
+    jne .next
+    mov al, 0xd
+    out 0xe9, al
+.next:
+    inc rbx
+    jmp .loop
+.done:
+    pop rbx
+    ret
 
 ; --- Output one character to debugcon, serial, and VGA text buffer ---
 ; dil = character (SysV ABI low byte of first integer arg)
@@ -44,9 +99,12 @@ arch_console_putchar:
     mov al, bl				; character to transmit
     out dx, al				; send byte to serial
     cmp bl, 0xa				; newline?
-    jne .vga				; skip CR if not LF
+    jne .com1_done			; skip CR if not LF
     mov al, 0xd				; carriage return before line feed
     out dx, al				; complete CRLF on serial
+.com1_done:
+    cmp byte [rel console_vga_enabled], 0
+    je .early_done			; default: debugcon + COM1 only
 
 ; --- VGA text buffer: handle control characters and printable glyphs ---
 .vga:
@@ -89,6 +147,11 @@ arch_console_putchar:
     jb .done				; still on screen
     xor rax, rax			; wrap to top-left
     mov [cursor_pos], rax		; cursor = 0
+
+.early_done:
+    pop rdi				; restore RDI
+    pop rbx				; restore RBX
+    ret					; return to C caller
 
 .done:
 ; --- Sync VGA hardware cursor (CRTC ports 0x3D4 index / 0x3D5 data) ---

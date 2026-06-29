@@ -30,7 +30,24 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": ".",
-                    "endsPattern": "QEMU is waiting for GDB"
+                    "endsPattern": "QEMU debug stub started"
+                }
+            }
+        },
+        {
+            "label": "qemu-debug-grub",
+            "type": "shell",
+            "command": "make DEBUG=1 build grub-iso gdbscripts && bash scripts/debug-qemu-grub.sh start",
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "aitos",
+                "pattern": {
+                    "regexp": "."
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "QEMU GRUB debug stub started"
                 }
             }
         }

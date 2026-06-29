@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 # Shared QEMU UI helpers. Set QEMU_GUI=1 for windowed VGA + PS/2 keyboard.
 # QEMU_GUI=0 (default): headless serial console (-nographic / pty).
+# QEMU_BOOT=d for GRUB ISO; default c for legacy / GRUB disk.
 
 qemu_gui_enabled() {
 	[ "${QEMU_GUI:-0}" = "1" ]
 }
 
+_qemu_boot_args() {
+	local boot="${QEMU_BOOT:-c}"
+	printf '%s\n' -boot "order=${boot},menu=off"
+}
+
 # Common QEMU args for run/debug (GUI: VGA + PS/2; headless: serial on terminal).
 qemu_run_extra_args() {
-	printf '%s\n' -boot order=c,menu=off
+	_qemu_boot_args
 	printf '%s\n' -nic none
 	if qemu_gui_enabled; then
 		# Single VGA window; Shell I/O is on the VGA screen via PS/2 keyboard.
@@ -35,7 +41,7 @@ qemu_boot_trace_args() {
 }
 
 qemu_gui_display_args() {
-	printf '%s\n' -boot order=c,menu=off
+	_qemu_boot_args
 	printf '%s\n' -nic none
 	if qemu_gui_enabled; then
 		if [ "$(uname -s)" = "Darwin" ]; then

@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include <aitos/irq.h>
 #include <aitos/io.h>
+#include <aitos/boot.h>
 
 #include <aitos/printk.h>
+#include <aitos/console.h>
 #include <aitos/types.h>
+#include <aitos/boot.h>
 
 #define IDT_DESC_INTERRUPT	0x0e
 
@@ -12,7 +15,15 @@
 #define PIC_S_CTRL	0xa0
 #define PIC_S_DATA	0xa1
 
-#define SELECTOR_K_CODE	0x18
+extern int printk_use_serial;
+
+static u16 idt_code_selector(void)
+{
+	u16 cs;
+
+	asm volatile("movw %%cs, %0" : "=r"(cs));
+	return cs;
+}
 
 #define IDT_DESC_P	0x80
 #define IDT_DESC_DPL0	0x00
@@ -63,8 +74,8 @@ static void pic_init(void)
 	outb(0x02, PIC_S_DATA);
 	outb(0x01, PIC_S_DATA);
 
-	/* Unmask IRQ1 (keyboard) and IRQ2 (cascade); mask the rest. */
-	outb(0xf9, PIC_M_DATA);
+	/* Keep all IRQs masked until intr_enable() in kmain. */
+	outb(0xff, PIC_M_DATA);
 	outb(0xff, PIC_S_DATA);
 }
 
@@ -74,7 +85,7 @@ static void __attribute__((noinline)) set_gate(int vec, void *handler)
 	u8 type = (vec < 0x20) ? IDT_DESC_TRAP : IDT_DESC_INTERRUPT;
 
 	idt[vec].offset_low = addr & 0xffff;
-	idt[vec].selector = SELECTOR_K_CODE;
+	idt[vec].selector = idt_code_selector();
 	idt[vec].ist = 0;
 	idt[vec].type_attr = IDT_DESC_P | IDT_DESC_DPL0 | type;
 	idt[vec].offset_mid = (addr >> 16) & 0xffff;
@@ -99,22 +110,37 @@ void register_irq_handler(u8 vector, irq_handler_t handler)
 void irq_init(void)
 {
 	int i;
+	u16 cs;
 
+	asm volatile("movw %%cs, %0" : "=r"(cs));
 	for (i = 0; i < 0x30; i++) {
-		void *handler = (void *)intr_entry_table[i];
+		u64 addr = (u64)(uintptr_t)intr_entry_table[i];
+		u8 type = (i < 0x20) ? IDT_DESC_TRAP : IDT_DESC_INTERRUPT;
 
-		set_gate(i, handler);
+		idt[i].offset_low = addr & 0xffff;
+		idt[i].selector = cs;
+		idt[i].ist = 0;
+		idt[i].type_attr = IDT_DESC_P | IDT_DESC_DPL0 | type;
+		idt[i].offset_mid = (addr >> 16) & 0xffff;
+		idt[i].offset_high = (addr >> 32) & 0xffffffff;
+		idt[i].reserved = 0;
 	}
 
 	idtr.limit = sizeof(idt) - 1;
 	idtr.base = (u64)(uintptr_t)idt;
 	asm volatile("lidt %0" : : "m"(idtr));
 	pic_init();
-	pr_info("irq: IDT and PIC initialized\n");
+	console_puts("irq: IDT and PIC initialized\n");
 }
 
 enum intr_status intr_enable(void)
 {
+	/* GRUB headless: COM1 only; keep PS/2 masked to avoid spurious IRQ1 flood. */
+	if (boot_is_multiboot2())
+		outb(0xff, PIC_M_DATA);
+	else
+		outb(0xf9, PIC_M_DATA);
+	outb(0xff, PIC_S_DATA);
 	asm volatile("sti");
 	return INTR_ON;
 }

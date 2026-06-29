@@ -10,6 +10,7 @@ load_env_rc
 GDB_PORT="${GDB_PORT:-1234}"
 QEMU="${QEMU:-qemu-system-x86_64}"
 QEMU_GUI="${QEMU_GUI:-0}"
+GRUB_BOOT="${GRUB_BOOT:-iso}"
 PID_FILE="bin/qemu-debug.pid"
 SERIAL_LOG="bin/qemu-serial.log"
 PTY_FILE="bin/qemu-serial.pty"
@@ -92,7 +93,7 @@ stop_debug_wrappers() {
 	for pid in $(pgrep -x script 2>/dev/null || true); do
 		cmd=$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true)
 		case "$cmd" in
-			*scripts/debug.sh* | *build/gdb/aitos.gdb*)
+			*scripts/debug.sh* | *scripts/debug-grub.sh* | *build/gdb/aitos.gdb*)
 				kill -TERM "$pid" 2>/dev/null || true
 				;;
 		esac
@@ -104,7 +105,24 @@ stop_all() {
 	free_gdb_port
 	stop_gdb_sessions
 	stop_debug_wrappers
-	echo "Debug QEMU stopped."
+	echo "Debug QEMU (GRUB) stopped."
+}
+
+grub_boot_media() {
+	case "$GRUB_BOOT" in
+	iso)
+		export QEMU_BOOT=c
+		BOOT_MEDIA=(-drive file=bin/aitos.iso,format=raw,if=ide,index=0,media=disk)
+		;;
+	disk)
+		export QEMU_BOOT=c
+		BOOT_MEDIA=(-drive "file=bin/aitos-grub.img,format=raw,if=ide,index=0,media=disk")
+		;;
+	*)
+		echo "error: GRUB_BOOT must be iso or disk" >&2
+		exit 1
+		;;
+	esac
 }
 
 start_qemu() {
@@ -112,7 +130,13 @@ start_qemu() {
 	stop_qemu
 	free_gdb_port
 
-	make DEBUG=1 image gdbscripts
+	if [ "$GRUB_BOOT" = "iso" ]; then
+		make DEBUG=1 build grub-iso gdbscripts
+	else
+		make DEBUG=1 build grub-disk gdbscripts
+	fi
+
+	grub_boot_media
 
 	: >"$SERIAL_LOG"
 	rm -f "$PTY_FILE"
@@ -122,13 +146,18 @@ start_qemu() {
 		UI_ARGS+=("$line")
 	done < <(qemu_gui_display_args)
 
-	# debugcon writes boot trace; stderr/stdout may contain the pty path.
 	if ! qemu_gui_enabled; then
 		UI_ARGS+=(-serial pty)
 	fi
+
+	DATA_DRIVE=()
+	if [ "$GRUB_BOOT" = "disk" ]; then
+		DATA_DRIVE=(-drive file=bin/hd80M.img,format=raw,if=ide,index=1,media=disk)
+	fi
+
 	"$QEMU" \
-		-drive file=bin/hd60M.img,format=raw,if=ide,index=0,media=disk \
-		-drive file=bin/hd80M.img,format=raw,if=ide,index=1,media=disk \
+		"${BOOT_MEDIA[@]}" \
+		"${DATA_DRIVE[@]}" \
 		-m 128 \
 		-cpu qemu64 \
 		-no-reboot \
@@ -148,10 +177,10 @@ start_qemu() {
 		fi
 	fi
 
-	echo "QEMU debug stub started (QEMU_GUI=${QEMU_GUI})"
+	echo "QEMU GRUB debug stub started (GRUB_BOOT=${GRUB_BOOT}, QEMU_GUI=${QEMU_GUI})"
 	echo "GDB target: 127.0.0.1:${GDB_PORT}"
 	qemu_ui_hint_debug "$(cat "$PTY_FILE" 2>/dev/null || true)"
-	echo "Run: make gdb   or: make debug"
+	echo "Run: make debug-grub"
 }
 
 case "${1:-start}" in

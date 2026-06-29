@@ -15,6 +15,8 @@ BOOT_BIN	= $(BUILD_DIR)/mbr.bin
 LOADER_BIN	= $(BUILD_DIR)/loader.bin
 HD60_IMG	= $(BIN_DIR)/hd60M.img
 HD80_IMG	= $(BIN_DIR)/hd80M.img
+AITOS_ISO	= $(BIN_DIR)/aitos.iso
+GRUB_DISK	= $(BIN_DIR)/aitos-grub.img
 
 GDB_DIR		= $(BUILD_DIR)/gdb
 GDB_INIT	= $(GDB_DIR)/aitos.gdb
@@ -22,7 +24,7 @@ GDB_DEBUG	= $(GDB_DIR)/aitos-debug.gdb
 LOADER_DEBUG_GATE = loader_debug_gate
 
 INC		= -I include/
-CFLAGS		= -m64 -mcmodel=medium -mno-red-zone -fno-pic -fno-pie \
+CFLAGS		= -m64 -mcmodel=medium -mno-red-zone -mgeneral-regs-only -fno-pic -fno-pie \
 		  -fcf-protection=none \
 		  -Wall -Wextra -nostdlib -fno-builtin -fno-stack-protector \
 		  $(INC) -c
@@ -35,9 +37,11 @@ LDFLAGS		+= -g
 else
 CFLAGS		+= -O2
 endif
+CFLAGS		+= $(CFLAGS_EXTRA)
 
 OBJS		= \
 	$(BUILD_DIR)/arch/x86_64/kernel.o \
+	$(BUILD_DIR)/arch/x86_64/multiboot2.o \
 	$(BUILD_DIR)/arch/x86_64/print.o \
 	$(BUILD_DIR)/kernel/main.o \
 	$(BUILD_DIR)/kernel/irq.o \
@@ -47,6 +51,8 @@ OBJS		= \
 	$(BUILD_DIR)/drivers/vga.o \
 	$(BUILD_DIR)/drivers/keyboard.o \
 	$(BUILD_DIR)/mm/bootstrap.o \
+	$(BUILD_DIR)/boot/early.o \
+	$(BUILD_DIR)/boot/multiboot2.o \
 	$(BUILD_DIR)/sched/core.o \
 	$(BUILD_DIR)/proc/syscall-stub.o \
 	$(BUILD_DIR)/fs/fs-stub.o \
@@ -59,7 +65,7 @@ GDB		?= gdb
 GDB_PORT	?= 1234
 QEMU_GUI	?= 0
 
-export QEMU GDB GDB_PORT QEMU_GUI
+export QEMU GDB GDB_PORT QEMU_GUI GRUB_BOOT
 
 QEMU_DRIVE	= -drive file=$(HD60_IMG),format=raw,if=ide,index=0,media=disk \
 		  -drive file=$(HD80_IMG),format=raw,if=ide,index=1,media=disk
@@ -67,7 +73,9 @@ QEMU_DRIVE	= -drive file=$(HD60_IMG),format=raw,if=ide,index=0,media=disk \
 .PHONY: all build image clean clean-all gcc-version-check \
 	run-qemu run-qemu-gui boot-trace \
 	debug debug-gui debug-tmux debug-tmux-gui \
-	debug-qemu debug-qemu-gui gdb stop gdbscripts
+	debug-qemu debug-qemu-gui gdb stop gdbscripts \
+	grub-iso grub-disk run-qemu-grub run-qemu-grub-disk \
+	debug-qemu-grub debug-grub debug-grub-disk verify-grub-shell verify-grub-shell-cmd auto-verify-grub
 
 default: all
 
@@ -95,6 +103,34 @@ gcc-version-check:
 build: gcc-version-check $(BOOT_BIN) $(LOADER_BIN) $(KERNEL_ELF)
 
 image: build $(HD60_IMG) $(HD80_IMG) $(KERNEL_BIN)
+
+$(BUILD_DIR)/boot/%.o: boot/%.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $< -o $@
+
+$(BUILD_DIR)/kernel/irq.o: kernel/irq.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $< -o $@
+
+$(BUILD_DIR)/kernel/printk.o: kernel/printk.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $< -o $@
+
+$(BUILD_DIR)/drivers/console.o: drivers/console.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $< -o $@
+
+$(BUILD_DIR)/shell/cmd.o: shell/cmd.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $(CFLAGS_EXTRA) $< -o $@
+
+$(BUILD_DIR)/shell/repl.o: shell/repl.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O0 $(CFLAGS_EXTRA) $< -o $@
+
+$(BUILD_DIR)/lib/string.o: lib/string.c
+	$(MKDIR) $(dir $@)
+	$(CC) $(CFLAGS) -O2 $< -o $@
 
 $(BUILD_DIR)/%.o: %.c
 	$(MKDIR) $(dir $@)
@@ -171,15 +207,50 @@ debug-tmux-gui:
 
 stop:
 	@bash scripts/debug-qemu.sh stop
+	@bash scripts/debug-qemu-grub.sh stop 2>/dev/null || true
 
 gdb:
 	$(MAKE) DEBUG=1 image gdbscripts
 	$(GDB) -q -x $(GDB_INIT) -ex "target remote 127.0.0.1:$(GDB_PORT)" \
-		-x $(GDB_DEBUG) $(KERNEL_ELF)
+		$(KERNEL_ELF)
+
+grub-iso: $(KERNEL_ELF) $(HD80_IMG)
+	@bash scripts/build-grub-iso.sh
+
+grub-disk: $(KERNEL_ELF)
+	@bash scripts/build-grub-disk.sh
+
+run-qemu-grub: grub-iso
+	@GRUB_BOOT=iso bash scripts/run-qemu-grub.sh
+
+run-qemu-grub-disk: grub-disk
+	@GRUB_BOOT=disk bash scripts/run-qemu-grub.sh
+
+verify-grub-shell:
+	@chmod +x scripts/verify-grub-shell.sh
+	@bash scripts/verify-grub-shell.sh
+
+verify-grub-shell-cmd:
+	@chmod +x scripts/verify-grub-shell.sh
+	@RUN_CMD=1 bash scripts/verify-grub-shell.sh
+
+auto-verify-grub:
+	@chmod +x scripts/auto-verify-grub.sh scripts/verify-grub-shell.sh
+	@bash scripts/auto-verify-grub.sh
+
+debug-qemu-grub:
+	@GRUB_BOOT=$(if $(filter disk,$(GRUB_BOOT)),disk,iso) bash scripts/debug-qemu-grub.sh start
+
+debug-grub:
+	@GRUB_BOOT=$(if $(filter disk,$(GRUB_BOOT)),disk,iso) bash scripts/debug-grub.sh
+
+debug-grub-disk:
+	@GRUB_BOOT=disk bash scripts/debug-grub.sh
 
 clean:
 	rm -rf $(BUILD_DIR)/*
 	rm -f bin/qemu-debug.pid bin/qemu-serial.log bin/qemu-serial.pty bin/qemu-debug.stderr
+	rm -f $(AITOS_ISO) $(GRUB_DISK)
 
 clean-all: clean
 	rm -rf $(BIN_DIR)

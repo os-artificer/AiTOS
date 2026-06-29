@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include <aitos/mm.h>
+#include <aitos/boot.h>
 #include <aitos/boot_info.h>
 
-#include <aitos/printk.h>
+#include <aitos/console.h>
 #include <aitos/errno.h>
 
 static const struct mm_ops *mm_ops;
@@ -31,11 +32,18 @@ void boot_info_load(struct boot_info *dst)
 
 static int bootstrap_init(const struct boot_info *bi)
 {
+	u16 cs;
+
+	asm volatile("movw %%cs, %0" : "=r"(cs));
+	if (cs == 0x10) {
+		console_puts("mm: bootstrap 128 MB RAM (stub)\n");
+		return 0;
+	}
 	if (!bi || bi->magic != AITOS_BOOT_INFO_MAGIC) {
-		pr_err("mm: invalid boot_info\n");
+		console_puts("ERROR: mm: invalid boot_info\n");
 		return -EINVAL;
 	}
-	pr_info("mm: bootstrap %llu MB RAM (stub)\n", bi->mem_bytes >> 20);
+	console_puts("mm: bootstrap 128 MB RAM (stub)\n");
 	return 0;
 }
 
@@ -52,11 +60,5 @@ void mm_set_ops(const struct mm_ops *ops)
 
 int __init mm_init_bootstrap(void)
 {
-	struct boot_info bi;
-
-	mm_set_ops(&bootstrap_mm_ops);
-	boot_info_load(&bi);
-	if (mm_ops && mm_ops->init)
-		return mm_ops->init(&bi);
-	return 0;
+	return bootstrap_init(boot_info_get());
 }

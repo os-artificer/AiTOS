@@ -34,8 +34,8 @@
 ENTRY(_start)
 
 /* Link/run address (VMA). Today identical to physical load address. */
-KERNEL_VMA = 0x70000;
-KERNEL_PHYS = 0x70000;	/* Must match boot.inc KERNEL_BIN_BASE_ADDR */
+KERNEL_VMA = 0x100000;
+KERNEL_PHYS = 0x100000;	/* Run address; legacy MBR loads to KERNEL_STAGING_ADDR (0x70000) first */
 
 PHDRS
 {
@@ -48,7 +48,8 @@ SECTIONS
 	. = KERNEL_VMA;
 
 	.text : AT(KERNEL_PHYS) {
-		*(.head.text)		/* _start (kernel.asm) */
+		*(.head.text)		/* _start @ link address — legacy loader jmp target */
+		*(.multiboot)		/* Multiboot2 header after _start, within 32 KiB */
 		*(.text .text.*)
 		*(.init.text)		/* __init in include/aitos/compiler.h */
 	} :text

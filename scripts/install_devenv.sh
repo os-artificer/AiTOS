@@ -125,7 +125,7 @@ install_macos() {
 	fi
 
 	log "Installing macOS dependencies via Homebrew..."
-	brew install x86_64-elf-gcc x86_64-elf-binutils nasm qemu gdb tmux
+	brew install x86_64-elf-gcc x86_64-elf-binutils nasm qemu gdb tmux grub xorriso
 }
 
 install_linux() {
@@ -139,7 +139,8 @@ install_linux() {
 			run_as_root apt-get update -qq
 			run_as_root apt-get install -y \
 				build-essential nasm gcc gdb \
-				qemu-system-x86 tmux
+				qemu-system-x86 tmux \
+				grub-pc-bin grub-common xorriso
 			if have gcc; then
 				major="$(gcc_major gcc)" || major=0
 				if [ "$major" -lt 13 ] 2>/dev/null; then

@@ -5,15 +5,15 @@
             "name": "Debug AiTOS (QEMU + GDB)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/kernel.bin",
+            "program": "${workspaceFolder}/build/kernel.elf",
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
             "miDebuggerPath": "gdb",
             "preLaunchTask": "qemu-debug",
             "setupCommands": [
                 {
-                    "text": "set architecture i386",
-                    "description": "32-bit x86 kernel"
+                    "text": "set architecture i386:x86-64",
+                    "description": "x86-64 kernel"
                 },
                 {
                     "text": "set disassembly-flavor intel",
@@ -28,8 +28,40 @@
                     "description": "Connect to QEMU GDB stub"
                 },
                 {
-                    "text": "source ${workspaceFolder}/build/gdb/aitos-debug.gdb",
-                    "description": "Auto-stop at kmain (run make gdbscripts first)"
+                    "text": "source ${workspaceFolder}/build/gdb/aitos.gdb",
+                    "description": "Pending break at kmain"
+                }
+            ]
+        },
+        {
+            "name": "Debug AiTOS (GRUB + QEMU + GDB)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.elf",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "gdb",
+            "preLaunchTask": "qemu-debug-grub",
+            "setupCommands": [
+                {
+                    "text": "set architecture i386:x86-64",
+                    "description": "x86-64 kernel"
+                },
+                {
+                    "text": "set disassembly-flavor intel",
+                    "description": "Intel syntax"
+                },
+                {
+                    "text": "set breakpoint pending on",
+                    "description": "Allow breakpoints before kernel load"
+                },
+                {
+                    "text": "target remote :1234",
+                    "description": "Connect to QEMU GDB stub"
+                },
+                {
+                    "text": "source ${workspaceFolder}/build/gdb/aitos.gdb",
+                    "description": "Pending break at kmain after GRUB boot"
                 }
             ]
         },
@@ -37,16 +69,19 @@
             "name": "Attach GDB (QEMU already running)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/kernel.bin",
+            "program": "${workspaceFolder}/build/kernel.elf",
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb",
             "miDebuggerPath": "gdb",
             "setupCommands": [
                 {
-                    "text": "set architecture i386"
+                    "text": "set architecture i386:x86-64"
                 },
                 {
                     "text": "target remote :1234"
+                },
+                {
+                    "text": "source ${workspaceFolder}/build/gdb/aitos.gdb"
                 }
             ]
         }
