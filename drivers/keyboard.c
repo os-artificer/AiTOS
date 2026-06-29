@@ -226,13 +226,6 @@ int keyboard_read_char(void)
 	if (boot_is_multiboot2()) {
 		for (;;) {
 			if (com1_read_direct(&c)) {
-				/* #region agent log */
-				{
-					unsigned char m = 0x69;
-
-					asm volatile("outb %0, $0xe9" : : "a"(m));
-				}
-				/* #endregion */
 				if (c == '\r')
 					c = '\n';
 				return (int)c;

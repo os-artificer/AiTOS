@@ -64,11 +64,14 @@ if [ "${QEMU_MIRROR_DEBUGCON:-1}" = "1" ] && [ -t 1 ]; then
 	trap 'kill "$TAIL_PID" 2>/dev/null || true' EXIT INT TERM
 fi
 
+# Note: macOS ships bash 3.2, where "${arr[@]}" on an empty array under `set -u`
+# raises "unbound variable". DATA_DRIVE is empty for the iso path, so guard the
+# possibly-empty arrays with the ${arr[@]+...} form (expands to nothing if empty).
 exec "$QEMU" \
 	"${BOOT_MEDIA[@]}" \
-	"${DATA_DRIVE[@]}" \
+	${DATA_DRIVE[@]+"${DATA_DRIVE[@]}"} \
 	-m 128 \
 	-cpu qemu64 \
 	-no-reboot \
-	"${UI_ARGS[@]}" \
+	${UI_ARGS[@]+"${UI_ARGS[@]}"} \
 	-device isa-debug-exit,iobase=0xf4,iosize=0x04

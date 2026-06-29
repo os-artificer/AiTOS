@@ -8,6 +8,26 @@ cd "$ROOT"
 source "$ROOT/scripts/load-env.sh"
 load_env_rc
 
+# Portable bounded run: GNU `timeout` (Linux) / `gtimeout` (macOS coreutils),
+# else a bash fallback that kills the child after N seconds. macOS has neither
+# `timeout` by default.
+run_bounded() {
+	local secs="$1"
+	shift
+	if command -v timeout >/dev/null 2>&1; then
+		timeout "$secs" "$@"
+	elif command -v gtimeout >/dev/null 2>&1; then
+		gtimeout "$secs" "$@"
+	else
+		"$@" &
+		local pid=$!
+		( sleep "$secs"; kill -9 "$pid" 2>/dev/null || true ) &
+		local watcher=$!
+		wait "$pid" 2>/dev/null || true
+		kill -9 "$watcher" 2>/dev/null || true
+	fi
+}
+
 QEMU="${QEMU:-qemu-system-x86_64}"
 TRACE="${TRACE:-bin/boot-debugcon.log}"
 BOOT_SECS="${BOOT_SECS:-14}"
@@ -43,9 +63,9 @@ QEMU_ARGS=(
 
 if [ "$RUN_CMD" = "1" ]; then
 	# Kernel self-test runs help/version/echo at shell entry (no serial input needed).
-	timeout "$BOOT_SECS" "$QEMU" "${QEMU_ARGS[@]}" >/dev/null 2>&1 || true
+	run_bounded "$BOOT_SECS" "$QEMU" "${QEMU_ARGS[@]}" >/dev/null 2>&1 || true
 else
-	timeout "$BOOT_SECS" "$QEMU" "${QEMU_ARGS[@]}" >/dev/null 2>&1 || true
+	run_bounded "$BOOT_SECS" "$QEMU" "${QEMU_ARGS[@]}" >/dev/null 2>&1 || true
 fi
 
 if ! grep -aq 'aitos@localhost' "$TRACE"; then

@@ -11,13 +11,6 @@
 
 #include <aitos/printk.h>
 
-/* #region agent log */
-static void debug_mark(char c)
-{
-	asm volatile("outb %0, $0xe9" : : "a"(c));
-}
-/* #endregion */
-
 static void __init init_console_irq(void)
 {
 	console_init();
@@ -39,12 +32,6 @@ void kmain(void)
 	init_console_irq();
 	boot_show_banner();
 	init_subsystems();
-	/* #region agent log */
-	debug_mark('I');
-	/* #endregion */
 	intr_enable();
-	/* #region agent log */
-	debug_mark('E');
-	/* #endregion */
 	shell_run();
 }

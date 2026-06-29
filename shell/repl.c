@@ -248,23 +248,12 @@ static int grub_line_has_input(void)
 	return (int)has;
 }
 
-/* #region agent log */
-static void debug_mark(char c)
-{
-	asm volatile("outb %0, $0xe9" : : "a"(c));
-}
-/* #endregion */
-
 static void shell_shutdown(void);
 
 static int shell_dispatch_grub(int argc, char **argv)
 {
 	int help_match;
 	int version_match;
-
-	/* #region agent log */
-	debug_mark('D');
-	/* #endregion */
 
 	(void)argc;
 	(void)argv;
@@ -289,13 +278,7 @@ static int shell_dispatch_grub(int argc, char **argv)
 		     : "rdi", "cc", "memory");
 
 	if (help_match) {
-		/* #region agent log */
-		debug_mark('H');
-		/* #endregion */
 		shell_cmd_help(argc, argv);
-		/* #region agent log */
-		debug_mark('0');
-		/* #endregion */
 		return 0;
 	}
 
@@ -327,9 +310,6 @@ static int shell_dispatch_grub(int argc, char **argv)
 	if (version_match)
 		return shell_cmd_version(argc, argv);
 
-	/* #region agent log */
-	debug_mark('?');
-	/* #endregion */
 	console_puts("aitos-sh: command not found\n");
 	return -1;
 }
@@ -427,9 +407,6 @@ static int parse_line(char *line, char **argv, int max_arg)
 
 static void shell_shutdown(void)
 {
-	/* #region agent log */
-	debug_mark('Q');
-	/* #endregion */
 	console_puts("logout\n");
 	outb(0, QEMU_ISA_DEBUG_EXIT_PORT);
 	console_puts("AiTOS halted. Use Ctrl-A X to quit QEMU.\n");
@@ -475,56 +452,19 @@ void shell_run(void)
 	int pos = 0;
 	char ch;
 
-	/* #region agent log */
-	debug_mark('1');
-	/* #endregion */
 	if (!boot_is_multiboot2())
 		console_clear();
 	else
 		keyboard_drain_com1();
-	/* #region agent log */
-	debug_mark('2');
-	/* #endregion */
 	if (boot_is_multiboot2()) {
 		grub_line_clear_buffer();
 		grub_pos_reset();
 	} else {
 		line_clear_buffer();
 	}
-	/* #region agent log */
-	debug_mark('a');
-	/* #endregion */
 	cv_clear();
-	/* #region agent log */
-	debug_mark('b');
-	/* #endregion */
 	keyboard_drain_com1();
-	/* #region agent log */
-	debug_mark('c');
-	/* #endregion */
 	console_puts("AiTOS Shell ready - type 'help' for commands\n");
-	/* #region agent log */
-	debug_mark('3');
-		if (boot_is_multiboot2()) {
-		asm volatile("movabsq $grub_line_slot, %%rdi\n\t"
-			     "movl $0x68, (%%rdi)\n\t"
-			     "movl (%%rdi), %%eax\n\t"
-			     "cmpl $0x68, %%eax\n\t"
-			     "je 1f\n\t"
-			     "mov $'!', %%al\n\t"
-			     "outb %%al, $0xe9\n\t"
-			     "jmp 2f\n\t"
-			     "1:\n\t"
-			     "mov $'=', %%al\n\t"
-			     "outb %%al, $0xe9\n\t"
-			     "2:\n\t"
-			     :
-			     :
-			     : "rax", "rdi", "memory");
-		grub_pos_reset();
-		grub_line_clear_buffer();
-	}
-	/* #endregion */
 	print_prompt();
 
 #ifdef GRUB_SHELL_SELFTEST
@@ -535,19 +475,10 @@ void shell_run(void)
 	for (;;) {
 		ch = (char)keyboard_read_char();
 
-		if (boot_is_multiboot2() && ch) {
-			/* #region agent log */
-			debug_mark('R');
-			/* #endregion */
-		}
-
 		if (ch == '\r')
 			ch = '\n';
 
 		if (ch == 4 && pos == 0 && !boot_is_multiboot2()) {
-			/* #region agent log */
-			debug_mark('D');
-			/* #endregion */
 			console_puts("\n");
 			shell_shutdown();
 		}
@@ -573,9 +504,6 @@ void shell_run(void)
 				int argc;
 				int ret = 0;
 
-				/* #region agent log */
-				debug_mark('>');
-				/* #endregion */
 				if (boot_is_multiboot2())
 					ret = shell_dispatch_grub(0, NULL);
 				else {
@@ -585,9 +513,6 @@ void shell_run(void)
 				}
 
 				if (!boot_is_multiboot2() && ret == SHELL_EXIT) {
-					/* #region agent log */
-					debug_mark('S');
-					/* #endregion */
 					shell_shutdown();
 				}
 				if (boot_is_multiboot2())
@@ -616,18 +541,12 @@ void shell_run(void)
 			unsigned int pos;
 
 			if (ch >= 32 && ch <= 126) {
-				/* #region agent log */
-				debug_mark('K');
-				/* #endregion */
 				pos = grub_len_load();
 				if (pos <= 7) {
 					grub_store_slot((int)pos, ch);
 					grub_len_inc();
 				}
 				console_write_char(ch);
-				/* #region agent log */
-				debug_mark('E');
-				/* #endregion */
 			}
 			continue;
 		}

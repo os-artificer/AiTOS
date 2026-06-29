@@ -155,13 +155,14 @@ start_qemu() {
 		DATA_DRIVE=(-drive file=bin/hd80M.img,format=raw,if=ide,index=1,media=disk)
 	fi
 
+	# bash 3.2 (macOS): guard possibly-empty arrays so `set -u` does not abort.
 	"$QEMU" \
 		"${BOOT_MEDIA[@]}" \
-		"${DATA_DRIVE[@]}" \
+		${DATA_DRIVE[@]+"${DATA_DRIVE[@]}"} \
 		-m 128 \
 		-cpu qemu64 \
 		-no-reboot \
-		"${UI_ARGS[@]}" \
+		${UI_ARGS[@]+"${UI_ARGS[@]}"} \
 		-debugcon "file:${SERIAL_LOG}" \
 		-S \
 		-gdb "tcp:127.0.0.1:${GDB_PORT}" \
